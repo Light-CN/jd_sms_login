@@ -4,6 +4,7 @@ const QYWX_KEY =
     ? process.env.QYWX_KEY
     : '';
 // 尽量不用@all，除非只有你一个人
+//格式：企业id,应用secret,通知的用户id(所有人填@all),应用AgentID
 const QYWX_AM =
   process.env.QYWX_AM && process.env.QYWX_AM.length > 0
     ? process.env.QYWX_AM
@@ -36,7 +37,7 @@ async function sendMsg(updateMsg, cookie, userMsg) {
           json: {
             msgtype: 'text',
             text: {
-              content: `====获取到cookie====\n${updateMsg}\n用户备注：${userMsg}\n${cookie}`,
+              content: `====获取到cookie====\n${updateMsg}\n用户备注：${userMsg}\n${cookie}\n时间:${Date()}`,
             },
           },
         }
@@ -70,7 +71,7 @@ async function sendMsg(updateMsg, cookie, userMsg) {
           safe: '0',
           msgtype: 'text',
           text: {
-            content: `====获取到cookie====\n${updateMsg}\n用户备注：${userMsg}\n${cookie}`,
+            content: `====获取到cookie====\n${updateMsg}\n用户备注：${userMsg}\n${cookie}\n时间:${Date()}`,
           },
         },
         headers: {
@@ -93,7 +94,7 @@ async function sendMsg(updateMsg, cookie, userMsg) {
  * @param {*} cookie
  * @return {*}
  */
-async function cookieFlow(cookie, userMsg) {
+async function cookieFlow(updateMsg, cookie, userMsg) {
   try {
     await sendMsg(updateMsg, cookie, userMsg);
     return msg;
@@ -190,7 +191,8 @@ async function sendSms(phone) {
     dataType: 'json',
   });
   data = JSON.parse(res.body).data;
-
+  //优化错误提示
+  if(!data) data = JSON.parse(res.body)
   if (data.err_code > 0) {
     return { ok: false, msg: '发送验证码失败:' + data.err_msg };
   } else {
@@ -276,7 +278,7 @@ app.post('/checkCode', async function (request, response) {
     console.log(phone, code);
     const data = await checkCode(phone, code, gsalt, ck);
     if (data.err_code > 0) {
-      response.send({ ok: false, msg: '登录失败:' + r.err_msg });
+      response.send({ ok: false, msg: '登录失败:' + data.err_msg });
     } else {
       const cookie =
         'pt_key=' +
@@ -298,6 +300,14 @@ app.post('/checkCode', async function (request, response) {
     response.send({ ok: false, msg: '错误' });
   }
 });
+//增加通知的测试
+app.get('/TestMsg', async function (request, response) {
+	if(cookieFlow("测试通知","pt_key=;pt_pin=;","test")){
+	  response.send({ ok: true, msg: '通知发送测试成功' });
+  }else{
+	  response.send({ ok: false, msg: '通知发送测试失败' });
+  }
+})
 
 const sleep = (ms) => {
   return new Promise((resolve) => {
